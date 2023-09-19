@@ -1,0 +1,10 @@
+{
+    "vars": [
+        {
+            "name": "HELLO",
+            "type": "string",
+            "required": true,
+            "default": "world"
+        }
+    ]
+}
