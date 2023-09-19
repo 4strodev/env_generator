@@ -1,6 +1,6 @@
 module github.com/4strodev/env_generator
 
-go 1.21.1
+go 1.21
 
 require (
 	github.com/knadh/koanf/parsers/json v0.1.0
