@@ -1,10 +1,16 @@
 {
     "vars": [
         {
-            "name": "HELLO",
+            "name": "USER",
             "type": "string",
             "required": true,
-            "default": "world"
+            "default": "user"
+        },
+        {
+            "name": "JWT_SECRET",
+            "type": "string",
+            "required": true,
+            "default": "secret"
         }
     ]
 }

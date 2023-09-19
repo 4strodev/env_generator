@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"embed"
 	"log"
 	"os"
 
@@ -31,15 +31,31 @@ const (
 	BOOL   = "bool"
 )
 
-var k = koanf.New(".")
+var (
+	k = koanf.New(".")
+	//go:embed templates
+	templatesFS embed.FS
+)
 
 func main() {
 	app := &cli.App{
+		Name:        "env generator",
+		Description: "A simple tool that generates .env files and .ts interfaces based on json schema",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "schema",
 				Value: "./env-schema.json",
 				Usage: "schema where env variables are defined",
+			},
+			&cli.StringFlag{
+				Name:  "out-env",
+				Value: ".env",
+				Usage: "path to create .env file",
+			},
+			&cli.StringFlag{
+				Name:  "out-ts",
+				Value: "env-variables.ts",
+				Usage: "path to create ts interface file",
 			},
 		},
 		Action: convertSchemaToEnvFile,
@@ -52,13 +68,13 @@ func main() {
 }
 
 func convertSchemaToEnvFile(ctx *cli.Context) error {
-	envFile, err := os.OpenFile(".env", os.O_TRUNC | os.O_WRONLY | os.O_CREATE, os.ModePerm)
+	envFile, err := os.OpenFile(ctx.String("out-env"), os.O_TRUNC|os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Error opening env file: %s", err)
 	}
 	defer envFile.Close()
 
-	envInterfaceFile, err := os.OpenFile("env-variables.ts", os.O_TRUNC | os.O_WRONLY | os.O_CREATE, os.ModePerm)
+	envInterfaceFile, err := os.OpenFile(ctx.String("out-ts"), os.O_TRUNC|os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Error opening typescript interface file: %s", err)
 	}
@@ -73,34 +89,17 @@ func convertSchemaToEnvFile(ctx *cli.Context) error {
 	schema := Schema{}
 	k.Unmarshal("", &schema)
 
-	envInterfaceFile.WriteString("export interface EnvVariables {\n")
-	for _, v := range schema.Vars {
-		envFile.WriteString(fmt.Sprintf("%s=\"%s\"\n", v.Name, v.Default))
-		dataType, err := getTypescriptType(v.Type)
-		if err != nil {
-			log.Fatal(err)
-		}
-		envInterfaceFile.WriteString(fmt.Sprintf("\t%s: %s;\n", v.Name, dataType))
+	result, err := renderInterface(schema)
+	if err != nil {
+		log.Fatal(err)
 	}
-	envInterfaceFile.WriteString("}\n")
+	envInterfaceFile.WriteString(result)
 
+	result, err = renderEnvFile(schema)
+	if err != nil {
+		log.Fatal(err)
+	}
+	envFile.WriteString(result)
 
 	return nil
-}
-
-func getTypescriptType(dataType DataType) (string, error) {
-	if (dataType == INT) {
-		return "number", nil
-	}
-	if (dataType == FLOAT) {
-		return "number", nil
-	}
-	if (dataType == BOOL) {
-		return "boolean", nil
-	}
-	if (dataType == STRING) {
-		return "string", nil
-	}
-
-	return "", fmt.Errorf("Invalid data type")
 }
